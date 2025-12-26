@@ -10,3 +10,4 @@ streamlit
 pandas
 scipy
 python-multipart
+plotly
