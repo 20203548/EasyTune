@@ -100,6 +100,10 @@ engine = InferenceEngine()
 # --- API 定义 ---
 tasks = {}
 
+class TrainRequest(BaseModel):
+    file_id: str
+    args: dict = None
+
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
     file_id = str(uuid.uuid4())
@@ -113,19 +117,20 @@ async def upload_file(file: UploadFile = File(...)):
     return {"filename": file.filename, "file_id": file_id}
 
 @app.post("/train")
-async def start_training(file_id: str, epoch: int, background_tasks: BackgroundTasks):
+async def start_training(req: TrainRequest,
+                         background_tasks: BackgroundTasks):
     task_id = str(uuid.uuid4())
     # 重新构建 data 路径
     data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
-    data_path = os.path.join(data_dir, f"{file_id}.json")
+    data_path = os.path.join(data_dir, f"{req.file_id}.json")
     
     tasks[task_id] = {"status": "running"}
-    background_tasks.add_task(run_training_background, task_id, data_path, epoch)
+    background_tasks.add_task(run_training_background, task_id, data_path, req.args)
     return {"task_id": task_id, "status": "started"}
 
-def run_training_background(task_id, data_path, epoch):
+def run_training_background(task_id, data_path, user_args):
     try:
-        train_model(task_id, data_path, epoch=epoch)
+        train_model(task_id, data_path,user_args)
         tasks[task_id]["status"] = "success"
     except Exception as e:
         tasks[task_id]["status"] = "failed"
